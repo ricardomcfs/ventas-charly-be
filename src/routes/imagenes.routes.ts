@@ -7,6 +7,6 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.get("/", getImagenes);
-router.post("/admin/imagenes", upload.array("images", 50), uploadImagenes);
+router.post("/admin/imagenes", uploadImagenes);
 
 export default router;

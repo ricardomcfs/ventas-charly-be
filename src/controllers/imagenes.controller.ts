@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
+import multer from 'multer';
 
 import { pool } from '../db';
 import { uploadBuffer } from '../utils/cloudinaryUpload';
+
+const upload = multer(); // multer sin storage, solo para parsear multipart/form-data
 
 export const getImagenes = async (req: Request, res: Response) => {
   try {
@@ -18,7 +21,7 @@ export const getImagenes = async (req: Request, res: Response) => {
     }
 
     const [data] = await pool.query(
-      `SELECT id, url, precio, codigo, nombre_original, created_at FROM imagenes ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT id, nombre_archivo, precioPublico, precioMayoreo, codigo FROM imagenes ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
 
@@ -34,41 +37,83 @@ export const getImagenes = async (req: Request, res: Response) => {
   }
 };
 
-export const uploadImagenes = async (req: Request, res: Response) => {
-  try {
-    const { categoria_id, prefijo, precios } = req.body;
-    const archivos = req.files as Express.Multer.File[];
-    const preciosArray = precios ? JSON.parse(precios) : [];
+export const uploadImagenes = [
+  // 👇 ahora multer espera el campo "imagenes"
+  upload.array('imagenes', 20), async (req: Request, res: Response) => {
+    try {
+      const files = req.files as Express.Multer.File[];
 
-    const conn = await pool.getConnection();
-    await conn.beginTransaction();
+      if (!files || files.length === 0) {
+        return res.status(400).json({ ok: false, message: 'No se enviaron imágenes' });
+      }
 
-    const results: any[] = [];
+      // 🔑 Recibimos datos extra
+      const categoria_id = req.body.categoria_id;
+      const codigo = req.body.codigo || null;
 
-    for (let i = 0; i < archivos.length; i++) {
-      const file = archivos[i];
-      const precio = preciosArray[i] !== undefined ? parseFloat(preciosArray[i]) : 0;
+      // Precios recibidos como JSON
+      const precios = req.body.precios ? JSON.parse(req.body.precios) : [];
 
-      const uploadRes = await uploadBuffer(file.buffer, "catalogo");
-      const url = uploadRes.secure_url;
+      const resultados: any[] = [];
 
-      const [insertRes]: any = await conn.query(
-        "INSERT INTO imagenes (categoria_id, url, precio, prefijo, nombre_original) VALUES (?, ?, ?, ?, ?)",
-        [categoria_id, url, precio, prefijo || null, file.originalname]
-      );
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
 
-      const newId = insertRes.insertId;
-      const codigo = (prefijo || "") + "-" + newId;
+        // Determinar carpeta según categoría
+        let folderName = 'catalogo/otros';
+        switch (Number(categoria_id)) {
+          case 1:
+            folderName = 'catalogo/bolsas-y-mochilas';
+            break;
+          case 2:
+            folderName = 'catalogo/zapatos';
+            break;
+          case 3:
+            folderName = 'catalogo/mascotas';
+            break;
+        }
 
-      await conn.query("UPDATE imagenes SET codigo = ? WHERE id = ?", [codigo, newId]);
-      results.push({ id: newId, url, precio, codigo });
+        // Subida a Cloudinary usando buffer
+        const result = await uploadBuffer(file.buffer, folderName);
+
+        // Guardar en la base de datos
+        await pool.query(
+          `INSERT INTO imagenes 
+            (nombre_archivo, precioPublico, precioMayoreo, codigo, activo, categoria_id)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            result.secure_url,
+            precios[i]?.precioPublico ?? null,
+            precios[i]?.precioMayoreo ?? null,
+            codigo,
+            true, // activo por default
+            categoria_id
+          ]
+        );
+
+        resultados.push({
+          url: result.secure_url,
+          public_id: result.public_id,
+          categoria_id,
+          prefijo: codigo,
+          precioPublico: precios[i]?.precioPublico ?? null,
+          precioMayoreo: precios[i]?.precioMayoreo ?? null
+        });
+      }
+
+      return res.json({
+        ok: true,
+        message: 'Imágenes subidas a Cloudinary correctamente',
+        data: resultados
+      });
+
+    } catch (error) {
+      console.error('Error en uploadImagenes:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Error al subir imágenes a Cloudinary',
+        error: (error as Error).message
+      });
     }
-
-    await conn.commit();
-    conn.release();
-
-    res.json({ ok: true, created: results });
-  } catch (error: any) {
-    res.status(500).json({ ok: false, error: error.message });
   }
-};
+];
