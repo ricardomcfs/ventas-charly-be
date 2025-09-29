@@ -95,7 +95,7 @@ export const uploadImagenes = [
           url: result.secure_url,
           public_id: result.public_id,
           categoria_id,
-          prefijo: codigo,
+          codigo: codigo,
           precioPublico: precios[i]?.precioPublico ?? null,
           precioMayoreo: precios[i]?.precioMayoreo ?? null
         });
