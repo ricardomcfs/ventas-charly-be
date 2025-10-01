@@ -11,6 +11,9 @@ cloudinary.config({
 });
 
 export const uploadBuffer = (buffer: Buffer, folder: string) => {
+  console.log(process.env.CLOUDINARY_CLOUD);
+  console.log(process.env.CLOUDINARY_KEY);
+  console.log(process.env.CLOUDINARY_SECRET);
   return new Promise<any>((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream({ folder }, (error, result) => {
       if (error) return reject(error);
