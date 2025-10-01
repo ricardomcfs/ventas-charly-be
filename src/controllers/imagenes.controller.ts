@@ -85,7 +85,7 @@ export const uploadImagenes = [
             result.secure_url,
             precios[i]?.precioPublico ?? null,
             precios[i]?.precioMayoreo ?? null,
-            codigo,
+            `${codigo}-${i+101}`,
             true, // activo por default
             categoria_id
           ]
