@@ -48,14 +48,12 @@ export const uploadImagenes = [
       }
 
       // 🔑 Recibimos datos extra
-      const categoria_id = req.body.categoria_id;
-      const tienda = req.body.tienda || null;
-      const codigo = req.body.codigo || null;
-      const precioPublico = req.body.precioPublico || null;
-      const precioMayoreo = req.body.precioMayoreo || null;
+      const categoria_id = Array.isArray(req.body.categoria_id) ? req.body.categoria_id[0] : req.body.categoria_id;
+      const tienda = Array.isArray(req.body.tienda) ? req.body.tienda[0] : req.body.tienda || null;
+      const codigo = Array.isArray(req.body.codigo) ? req.body.codigo[0] : req.body.codigo || null;
+      const precioPublico = Array.isArray(req.body.precioPublico) ? req.body.precioPublico[0] : req.body.precioPublico || null;
+      const precioMayoreo = Array.isArray(req.body.precioMayoreo) ? req.body.precioMayoreo[0] : req.body.precioMayoreo || null;
 
-      // Precios recibidos como JSON
-      const precios = req.body.precios ? JSON.parse(req.body.precios) : [];
 
       const resultados: any[] = [];
 
