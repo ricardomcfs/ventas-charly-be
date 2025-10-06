@@ -49,7 +49,10 @@ export const uploadImagenes = [
 
       // 🔑 Recibimos datos extra
       const categoria_id = req.body.categoria_id;
+      const tienda = req.body.tienda || null;
       const codigo = req.body.codigo || null;
+      const precioPublico = req.body.precioPublico || null;
+      const precioMayoreo = req.body.precioMayoreo || null;
 
       // Precios recibidos como JSON
       const precios = req.body.precios ? JSON.parse(req.body.precios) : [];
@@ -79,12 +82,13 @@ export const uploadImagenes = [
         // Guardar en la base de datos
         await pool.query(
           `INSERT INTO imagenes 
-            (nombre_archivo, precioPublico, precioMayoreo, codigo, activo, categoria_id)
-            VALUES (?, ?, ?, ?, ?, ?)`,
+            (nombre_tienda, nombre_archivo, precioPublico, precioMayoreo, codigo, activo, categoria_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [
+            tienda,
             result.secure_url,
-            precios[i]?.precioPublico ?? null,
-            precios[i]?.precioMayoreo ?? null,
+            precioPublico,
+            precioMayoreo,
             `${codigo}-${i+101}`,
             true, // activo por default
             categoria_id
@@ -92,12 +96,13 @@ export const uploadImagenes = [
         );
 
         resultados.push({
+          tienda: tienda,
           url: result.secure_url,
           public_id: result.public_id,
           categoria_id,
           codigo: codigo,
-          precioPublico: precios[i]?.precioPublico ?? null,
-          precioMayoreo: precios[i]?.precioMayoreo ?? null
+          precioPublico: precioPublico,
+          precioMayoreo: precioMayoreo
         });
       }
 
